@@ -8,23 +8,28 @@ export async function downloadYouTube(url: string) {
 
         const cookies = process.env.YOUTUBE_COOKIE;
 
+        console.log(`[YouTube] Starting download process. Cookie present: ${!!cookies}`);
+
         let agent;
         if (cookies) {
             try {
                 // If it looks like a JSON array, parse it.
-                // Otherwise, try to use it as a raw cookie string if the library supports it, 
-                // but we cast to any to satisfy the strict library types.
+                // Otherwise, try to use it as a raw cookie string if the library supports it.
                 const cookieData = cookies.trim().startsWith('[') ? JSON.parse(cookies) : cookies;
                 agent = ytdl.createAgent(cookieData as any);
+                console.log("[YouTube] Successfully created agent with cookies.");
             } catch (e) {
-                console.error("Failed to parse YOUTUBE_COOKIE:", e);
-                // Fallback attempt with raw string
+                console.error("[YouTube] Failed to parse or create agent from YOUTUBE_COOKIE:", e);
+                // Fallback attempt with raw string if JSON parsing failed but it wasn't supposed to be JSON
                 try {
                     agent = ytdl.createAgent(cookies as any);
+                    console.log("[YouTube] Created agent using raw cookie string fallback.");
                 } catch (innerE) {
-                    console.error("Agent creation failed:", innerE);
+                    console.error("[YouTube] Agent creation fallback failed:", innerE);
                 }
             }
+        } else {
+            console.warn("[YouTube] No YOUTUBE_COOKIE found in environment variables.");
         }
 
         const ytdlOptions = {
