@@ -1,15 +1,26 @@
 import { Innertube, UniversalCache } from "youtubei.js";
+import { ProxyAgent, fetch } from "undici";
 
 // Initialize a static client to reuse connections
 let yt: Innertube | null = null;
 
 async function getYouTubeClient() {
     if (!yt) {
+        const proxyUrl = process.env.PROXY_URL;
+        let customFetch: any = undefined;
+
+        if (proxyUrl) {
+            console.log("[YouTube] Using PROXY_URL for requests");
+            const agent = new ProxyAgent(proxyUrl);
+            customFetch = (url: string | URL, init?: any) => fetch(url, { ...init, dispatcher: agent });
+        }
+
         // Use a cache to store session data if needed
         yt = await Innertube.create({
             cache: new UniversalCache(false),
             generate_session_locally: true,
-            cookie: process.env.YOUTUBE_COOKIE || ""
+            cookie: process.env.YOUTUBE_COOKIE || "",
+            fetch: customFetch
         });
     }
     return yt;
