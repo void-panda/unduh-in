@@ -27,22 +27,38 @@ export async function downloadYouTube(url: string) {
             throw new Error("Could not extract Video ID from URL");
         }
 
-        const info = await client.getBasicInfo(videoId);
+        const info = await client.getInfo(videoId);
         if (!info) {
             throw new Error("Failed to get video info");
+        }
+
+        // Check if streaming data is present (if missing, we are likely blocked)
+        if (!info.streaming_data) {
+            console.error("[YouTube] Metadata retrieved, but streaming_data is missing. This usually means the server IP is blocked or a cookie is required.");
+            throw new Error("Streaming data not available (YouTube Blocked)");
         }
 
         const title = info.basic_info.title || "YouTube Video";
         const thumbnail = info.basic_info.thumbnail?.[0]?.url || "";
 
         // Choose the best format that has both video and audio
-        const format = info.chooseFormat({
-            type: 'video+audio',
-            quality: 'best'
-        });
+        let format;
+        try {
+            format = info.chooseFormat({
+                type: 'video+audio',
+                quality: 'best'
+            });
+        } catch (e) {
+            console.warn("[YouTube] Failed to find best video+audio format, trying fallback...");
+        }
 
         if (!format) {
-            throw new Error("No suitable video format (video+audio) found");
+            // Fallback: search for any video format
+            format = info.chooseFormat({ type: 'video', quality: 'best' });
+        }
+
+        if (!format) {
+            throw new Error("No suitable video format found");
         }
 
         // Decipher URL if needed (InnerTube formats usually have .url or .signature_cipher)
