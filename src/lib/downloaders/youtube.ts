@@ -6,8 +6,29 @@ export async function downloadYouTube(url: string) {
             throw new Error("Invalid YouTube URL");
         }
 
+        const cookies = process.env.YOUTUBE_COOKIE;
+
+        let agent;
+        if (cookies) {
+            try {
+                // If it looks like a JSON array, parse it.
+                // Otherwise, try to use it as a raw cookie string if the library supports it, 
+                // but we cast to any to satisfy the strict library types.
+                const cookieData = cookies.trim().startsWith('[') ? JSON.parse(cookies) : cookies;
+                agent = ytdl.createAgent(cookieData as any);
+            } catch (e) {
+                console.error("Failed to parse YOUTUBE_COOKIE:", e);
+                // Fallback attempt with raw string
+                try {
+                    agent = ytdl.createAgent(cookies as any);
+                } catch (innerE) {
+                    console.error("Agent creation failed:", innerE);
+                }
+            }
+        }
+
         const ytdlOptions = {
-            // WEB and WEB_EMBEDDED are essential for parsing watch.html correctly
+            agent,
             playerClients: ["WEB", "WEB_EMBEDDED", "ANDROID", "IOS"] as any,
             requestOptions: {
                 headers: {
